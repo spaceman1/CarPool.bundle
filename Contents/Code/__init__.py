@@ -1,9 +1,5 @@
 import re, string
 from datetime import timedelta, datetime, tzinfo
-from PMS import *
-from PMS.Objects import *
-from PMS.Shortcuts import *
-from PMS.Datetime import *
 
 ####################################################################################################
 
@@ -48,7 +44,7 @@ def ListEpisodes(sender, order):
   dir = MediaContainer()
   dir.title2 = L(order)
 
-  page = XML.ElementFromURL(LLEWTUBE_RSS_URL, True)
+  page = HTML.ElementFromURL(LLEWTUBE_RSS_URL)
 
   episodes = page.xpath("//channel/item")
 
