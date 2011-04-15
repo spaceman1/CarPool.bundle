@@ -1,5 +1,6 @@
-import re, string
+import re, string, time
 from datetime import timedelta, datetime, tzinfo
+import datetime
 
 ####################################################################################################
 
@@ -15,20 +16,19 @@ CACHE_INTERVAL      = 1800
 def Start():
   Plugin.AddPrefixHandler(LLEWTUBE_PREFIX, MainMenu, L("carpool"), "icon-default.png", "art-default.jpg")
   Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
-  Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
+  Plugin.AddViewGroup('_List', viewMode='List', mediaType='items')
   MediaContainer.title1 = L("carpool")
   MediaContainer.content = 'Items'
-  MediaContainer.art = R('art-default.jpg')
+  #MediaContainer.art = R('art-default.jpg')
   MediaContainer.viewGroup = 'Details'
   HTTP.SetCacheTime(CACHE_INTERVAL)
 
-def UpdateCache():
-  HTTP.Request(LLEWTUBE_RSS_URL)
+#def UpdateCache():
+#  HTTP.Request(LLEWTUBE_RSS_URL)
 
 def MainMenu():
 
-  dir = MediaContainer()
-  dir.viewGroup = 'List'
+  dir = MediaContainer(viewGroup='_List')
 
   dir.Append(Function(DirectoryItem(ListEpisodes, title=L('mostrecent'), thumb=R('icon-default.png')), order='mostrecent'))
   dir.Append(Function(DirectoryItem(ListEpisodes, title=L('atoz'), thumb=R('icon-default.png')), order='atoz'))
@@ -63,11 +63,7 @@ def ListEpisodes(sender, order):
     # Set the subtitle to the date
     episodeDate = episode.xpath("./datestamp/text()", namespaces=BLIP_NAMESPACE)
     episodeDate = re.search(r"\'(.*)\'", str(episodeDate)).group(1)
-    PMS.Log(episodeDate)
-    episodeDate = ParseDate(episodeDate)
-    LocalTz = LocalTimezone()
-    episodeLocalDate = episodeDate.astimezone(LocalTz)
-    episodeSubtitle = episodeLocalDate.strftime('%a %b %d, %Y')
+    episodeSubtitle = ' '.join(episodeDate[:-1].split('T'))
     
     # Get the description
     episodeDescription = TidyString(episode.xpath("./puredescription/text()", namespaces=BLIP_NAMESPACE)[0])
@@ -94,7 +90,7 @@ def ListEpisodes(sender, order):
       dir.Append(videos[title])
 
   if DEBUG_XML_RESPONSE:
-    PMS.Log(dir.Content())
+    Log(dir.Content())
   return dir
 
 def TidyString(stringToTidy):
@@ -110,44 +106,3 @@ def TidyString(stringToTidy):
       return stringSearch.group(1)
   else:
     return ''
-
-
-# Functions for managing time zones
-
-import time as _time
-
-ZERO = timedelta(0)
-HOUR = timedelta(hours=1)
-
-STDOFFSET = timedelta(seconds = -_time.timezone)
-if _time.daylight:
-    DSTOFFSET = timedelta(seconds = -_time.altzone)
-else:
-    DSTOFFSET = STDOFFSET
-
-DSTDIFF = DSTOFFSET - STDOFFSET
-
-class LocalTimezone(tzinfo):
-
-    def utcoffset(self, dt):
-        if self._isdst(dt):
-            return DSTOFFSET
-        else:
-            return STDOFFSET
-
-    def dst(self, dt):
-        if self._isdst(dt):
-            return DSTDIFF
-        else:
-            return ZERO
-
-    def tzname(self, dt):
-        return _time.tzname[self._isdst(dt)]
-
-    def _isdst(self, dt):
-        tt = (dt.year, dt.month, dt.day,
-              dt.hour, dt.minute, dt.second,
-              dt.weekday(), 0, -1)
-        stamp = _time.mktime(tt)
-        tt = _time.localtime(stamp)
-        return tt.tm_isdst > 0
